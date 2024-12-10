@@ -1,6 +1,6 @@
 import { HttpEndpoint } from '@interchainjs/types';
 import { Chain, AssetList } from '@chain-registry/v2-types'
-import { BaseWallet } from './base-wallet'
+import { BaseWallet } from './wallets/base-wallet';
 import { WCWallet } from './wc-wallet';
 import { ChainName, DeviceType, DownloadInfo, EndpointOptions, OS, SignerOptions, WalletManagerState, WalletState } from './types'
 import { ChainNameNotExist, createObservable, getValidRpcEndpoint, getWalletNameFromLocalStorage, NoValidRpcEndpointFound, removeWalletNameFromLocalStorage, setWalletNameToLocalStorage, WalletNotExist } from './utils'
@@ -41,7 +41,11 @@ export class WalletManager {
   async init() {
     this.state = WalletManagerState.Initializing
 
-    await Promise.all(this.wallets.map(async (wallet) => wallet.init()))
+    await Promise.all(this.wallets.map(async (wallet) => {
+      wallet.setChainMap(this.chains)
+      wallet.setAssetLists(this.assetLists)
+      return wallet.init()
+    }))
 
     const loggedWallet = getWalletNameFromLocalStorage()
     if (loggedWallet) {
@@ -78,25 +82,7 @@ export class WalletManager {
 
     try {
 
-
-      if (wallet.info.mode === 'extension') {
-        await Promise.all(this.chains.map(async chain => {
-          try {
-            await wallet.connect(chain.chainId)
-          } catch (error) {
-            if (
-              (error as any).message === `There is no chain info for ${chain.chainId}` ||
-              (error as any).message === `There is no modular chain info for ${chain.chainId}`
-            ) {
-              await wallet.addSuggestChain(chain, this.assetLists)
-            } else {
-              throw error
-            }
-          }
-        }))
-      } else {
-        await wallet.connect(this.chains.map(chain => chain.chainId))
-      }
+      await wallet.connect(this.chains.map(chain => chain.chainId))
 
       wallet.walletState = WalletState.Connected
 
@@ -192,13 +178,14 @@ export class WalletManager {
   getOfflineSigner(wallet: BaseWallet, chainName: string): ICosmosGeneralOfflineSigner {
     const chain = this.getChainByName(chainName)
     const signType = this.getPreferSignType(chainName)
-    if (signType === 'direct') {
-      const direct = wallet.getOfflineSignerDirect(chain.chainId)
-      return new DirectGeneralOfflineSigner(direct)
-    } else {
-      const amino = wallet.getOfflineSignerAmino(chain.chainId)
-      return new AminoGeneralOfflineSigner(amino)
-    }
+    // if (signType === 'direct') {
+    //   const direct = wallet.getOfflineSignerDirect(chain.chainId)
+    //   return new DirectGeneralOfflineSigner(direct)
+    // } else {
+    //   const amino = wallet.getOfflineSignerAmino(chain.chainId)
+    //   return new AminoGeneralOfflineSigner(amino)
+    // }
+    return {} as unknown as ICosmosGeneralOfflineSigner
   }
 
   async getAccount(walletName: string, chainName: ChainName) {

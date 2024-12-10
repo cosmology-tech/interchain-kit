@@ -1,12 +1,12 @@
 {
-  "name": "@interchain-kit/trust-extension",
+  "name": "@interchain-kit/metamask-extension",
   "version": "0.0.1",
   "author": "cosmology-tech <developers@cosmology.zone>",
   "description": "cosmos-kit wallet connector",
   "main": "index.js",
   "module": "esm/index.js",
   "types": "index.d.ts",
-  "homepage": "https://github.com/interchain-kit/trust-extension",
+  "homepage": "https://github.com/interchain-kit/metamask-extension",
   "license": "SEE LICENSE IN LICENSE",
   "publishConfig": {
     "access": "public",
@@ -14,10 +14,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/interchain-kit/trust-extension"
+    "url": "https://github.com/interchain-kit/metamask-extension"
   },
   "bugs": {
-    "url": "https://github.com/interchain-kit/trust-extension/issues"
+    "url": "https://github.com/interchain-kit/metamask-extension/issues"
   },
   "scripts": {
     "copy": "copyfiles -f ../../LICENSE README.md package.json dist",
@@ -33,6 +33,5 @@
   "keywords": [],
   "dependencies": {
     "@interchain-kit/core": "^0.0.1-beta.39"
-  },
-  "gitHead": "98e09a4c98adaec764d6aaab001de745642b4ca8"
+  }
 }

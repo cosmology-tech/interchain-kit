@@ -1,5 +1,11 @@
 import { assetLists, chains } from "@chain-registry/v2";
-import { BaseWallet, WCWallet } from "@interchain-kit/core";
+import {
+  BaseWallet,
+  EthereumWallet,
+  isInstanceOf,
+  MultiChainWallet,
+  WCWallet,
+} from "@interchain-kit/core";
 import { useChainWallet, useWalletManager } from "@interchain-kit/react";
 import { useRef, useState } from "react";
 import { makeKeplrChainInfo } from "../utils";
@@ -28,12 +34,35 @@ const BalanceTd = ({ address, wallet, chain }: BalanceProps) => {
   const [balance, setBalance] = useState<any>();
 
   const handleBalanceQuery = async () => {
+    let balance;
+
     setIsLoading(true);
-    const balanceQuery = createGetBalance(rpcEndpoint as string);
-    const balance = await balanceQuery({
-      address,
-      denom: chain.staking?.stakingTokens[0].denom as string,
-    });
+
+    if (isInstanceOf(wallet, EthereumWallet)) {
+      const result = await wallet.getBalance(chain.chainId as string);
+      const balanceInWei = parseInt(result, 16);
+      balance = { balance: { amount: balanceInWei.toString() } };
+    }
+
+    if (isInstanceOf(wallet, MultiChainWallet)) {
+      if (chain.chainType === "eip155") {
+        const ethWallet = wallet.getWalletByChainType("eip155");
+        if (isInstanceOf(ethWallet, EthereumWallet)) {
+          const result = await ethWallet.getBalance(chain.chainId as string);
+          const balanceInWei = parseInt(result, 16);
+          balance = { balance: { amount: balanceInWei.toString() } };
+        }
+      }
+
+      if (chain.chainType === "cosmos") {
+        const balanceQuery = createGetBalance(rpcEndpoint as string);
+        balance = await balanceQuery({
+          address,
+          denom: chain.staking?.stakingTokens[0].denom as string,
+        });
+      }
+    }
+
     setBalance(balance);
     setIsLoading(false);
   };
@@ -63,7 +92,7 @@ type SendTokenProps = {
   chain: Chain;
 };
 const SendTokenTd = ({ wallet, address, chain }: SendTokenProps) => {
-  const ref = useRef<HTMLInputElement>(null);
+  const toAddressRef = useRef<HTMLInputElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
 
   const { signingClient } = useChainWallet(
@@ -72,33 +101,69 @@ const SendTokenTd = ({ wallet, address, chain }: SendTokenProps) => {
   );
 
   const handleSendToken = async () => {
-    const txSend = createSend(signingClient);
+    if (!toAddressRef.current || !amountRef.current) {
+      return;
+    }
 
-    if (ref.current) {
-      const recipientAddress = ref.current.value;
-      const denom = chain.staking?.stakingTokens[0].denom as string;
+    const transaction = {
+      from: address,
+      to: toAddressRef.current.value,
+      value: `0x${parseInt(amountRef.current.value).toString(16)}`,
+    };
 
-      const fee = {
-        amount: coins(25000, denom),
-        gas: "1000000",
-      };
-
+    if (isInstanceOf(wallet, EthereumWallet)) {
       try {
-        const tx = await txSend(
-          address,
-          {
-            fromAddress: address,
-            toAddress: recipientAddress,
-            amount: [
-              { denom: denom, amount: amountRef.current?.value as string },
-            ],
-          },
-          fee,
-          "test"
-        );
+        console.log(transaction);
+        await wallet.switchChain(chain.chainId as string);
+        const tx = await wallet.sendTransaction(transaction);
         console.log(tx);
       } catch (error) {
-        console.error(error);
+        console.log(error);
+      }
+    }
+
+    if (isInstanceOf(wallet, MultiChainWallet)) {
+      if (chain.chainType === "eip155") {
+        const ethWallet = wallet.getWalletByChainType("eip155");
+        if (isInstanceOf(ethWallet, EthereumWallet)) {
+          try {
+            console.log(transaction);
+            await ethWallet.switchChain(chain.chainId as string);
+            const tx = await ethWallet.sendTransaction(transaction);
+            console.log(tx);
+          } catch (error) {
+            console.log(error);
+          }
+        }
+      }
+
+      if (chain.chainType === "cosmos") {
+        const txSend = createSend(signingClient);
+        const recipientAddress = toAddressRef.current.value;
+        const denom = chain.staking?.stakingTokens[0].denom as string;
+
+        const fee = {
+          amount: coins(25000, denom),
+          gas: "1000000",
+        };
+
+        try {
+          const tx = await txSend(
+            address,
+            {
+              fromAddress: address,
+              toAddress: recipientAddress,
+              amount: [
+                { denom: denom, amount: amountRef.current?.value as string },
+              ],
+            },
+            fee,
+            "test"
+          );
+          console.log(tx);
+        } catch (error) {
+          console.error(error);
+        }
       }
     }
   };
@@ -109,7 +174,10 @@ const SendTokenTd = ({ wallet, address, chain }: SendTokenProps) => {
         <button className="bg-blue-100 p-1 m-1" onClick={handleSendToken}>
           Send Token to:
         </button>
-        <input className="border-red-300 border-2 rounded-sm" ref={ref} />
+        <input
+          className="border-red-300 border-2 rounded-sm"
+          ref={toAddressRef}
+        />
       </div>
       <div>
         amount:{" "}

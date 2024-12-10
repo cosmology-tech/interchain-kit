@@ -1,10 +1,8 @@
-import { assetLists } from '@chain-registry/v2';
 import { StdSignDoc } from '@interchainjs/types';
 import { BroadcastMode, DirectSignDoc, SignOptions, SignType, Wallet, WalletAccount } from "./types";
 import Long from 'long';
 import { clientNotExistError, getClientFromExtension } from './utils';
 import { BaseWallet } from "./base-wallet";
-import { ChainInfo } from '@keplr-wallet/types'
 import {
   OfflineDirectSigner,
   StdSignature,

@@ -1,9 +1,14 @@
-import { TrustExtension } from './extension';
+import { CosmosWallet, EthereumWallet, MultiChainWallet } from '@interchain-kit/core';
 import { trustExtensionInfo } from "./registry";
 
-export * from './extension'
+
 export * from './registry'
 
-const trustWallet = new TrustExtension(trustExtensionInfo);
+const NetworkWallet = new Map()
 
-export { trustWallet }
+NetworkWallet.set('cosmos', new CosmosWallet(trustExtensionInfo))
+NetworkWallet.set('eip155', new EthereumWallet(trustExtensionInfo))
+
+const trustExtension = new MultiChainWallet(trustExtensionInfo, NetworkWallet);
+
+export { trustExtension }
